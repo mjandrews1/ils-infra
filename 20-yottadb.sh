@@ -27,10 +27,14 @@ add -segment LINK -file="$ydb_dir/ols/link.dat" -block=16384
 add -name ^link* -region=LINK ! ^link, ^linkIdx, ^meshEdge
 add -region ZCHG -dyn_segment=ZCHG -record=1019 -key=1019 -journal=enable
 add -segment ZCHG -file="$ydb_dir/ols/zchg.dat" -block=4096
-add -name ^zchg -region=ZCHG ! trigger append region: fast sync reads
+add -name ^zchg* -region=ZCHG ! ^zchg AND ^zchgSeq: the change log and its
+! sequence counter are ONE unit for the sync daemon and the crash-recovery
+! drill - same region, same journal. (Cross-layer fix, Nov 27 2026.)
 add -region CIRC -dyn_segment=CIRC -record=4080 -key=1019 -journal=enable
 add -segment CIRC -file="$ydb_dir/ols/circ.dat" -block=8192
-add -name ^circ -region=CIRC
+add -name ^loan* -region=CIRC ! ^loan, ^loanSeq - written by CIRC.m
+add -name ^item* -region=CIRC ! item status/loan pointers
+add -name ^patron* -region=CIRC ! PII boundary: patron data lives ONLY here
 add -region ERM -dyn_segment=ERM -record=4080 -key=1019 -journal=enable
 add -segment ERM -file="$ydb_dir/ols/erm.dat" -block=8192
 add -name ^erm -region=ERM

@@ -14,10 +14,14 @@ if [[ "$MODE" == "apply" ]]; then
     lxc exec "$ILS_CT" -- systemctl restart prometheus-node-exporter
 fi
 # Probe cadence: minute interval during pilot; TODO: switch to hourly at full
-# scale per capacity model. Watchword output goes to the textfile dir.
+# scale per capacity model. Forth source is NOT executable: the cron runs the
+# pForth binary AS THE INTERPRETER for watch.4th (cross-layer fix, Nov 27
+# 2026; the old line executed the .4th file directly and failed silently,
+# which ProbeStale would have paged 15 minutes later).
+PFORTH_BIN=/opt/pforth/build/pforth_standalone
 do_ "probe cron present" lxc exec "$ILS_CT" -- grep -q "watch.4th" /etc/cron.d/ils-probes
 if [[ "$MODE" == "apply" ]]; then
-    printf '%s\n' "*/1 * * * * ils /opt/meshgraph-ils/ils/probes/watch.4th > $TEXTFILE_DIR/ils.probes 2>/dev/null" \
+    printf '%s\n' "*/1 * * * * ils $PFORTH_BIN /opt/meshgraph-ils/ils/probes/watch.4th > $TEXTFILE_DIR/ils.probes 2>/dev/null" \
         | lxc exec "$ILS_CT" -- tee /etc/cron.d/ils-probes >/dev/null
 fi
 finish
