@@ -24,4 +24,17 @@ if [[ "$MODE" == "apply" ]]; then
     printf '%s\n' "*/1 * * * * ils $PFORTH_BIN /opt/meshgraph-ils/ils/probes/watch.4th > $TEXTFILE_DIR/ils.probes 2>/dev/null" \
         | lxc exec "$ILS_CT" -- tee /etc/cron.d/ils-probes >/dev/null
 fi
+# Perf evidence cron (belt-and-suspenders, Nov 27 2026): the code drafts
+# schedule the weekly bench "via the existing 60-style cron pattern" but no
+# infra script installed it - the PerfBandRed alert had no producer.
+# Weekly, Sunday 04:30 UTC: after backup, before index-cache drift matters.
+do_ "perf bench cron present" lxc exec "$ILS_CT" -- grep -q "run_bench.py" /etc/cron.d/ils-perf
+if [[ "$MODE" == "apply" ]]; then
+    printf '%s\n' "30 4 * * 0 ils /opt/meshgraph-ils/ils/perf/run_bench.py >> /var/log/ils/perf.log 2>&1" \
+        | lxc exec "$ILS_CT" -- tee /etc/cron.d/ils-perf >/dev/null
+fi
+# Sync daemon unit is an APP-layer artifact (meshgraph-ils repo, Phase 1);
+# this check drifts until that repo deploys. Deliberate: fleet sweeps should
+# SAY "sync daemon not deployed" rather than never look.
+do_ "sync daemon unit present (app-layer, Phase 1)" lxc exec "$ILS_CT" -- test -f /etc/systemd/system/ils-sync.service
 finish
